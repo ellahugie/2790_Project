@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Three Bars — Static + Certain</title>
+  <!-- Vega runtime + embed helper -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    html, body { margin:0; padding:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    #view { max-width: 720px; margin: 20px auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="view"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Three vertical bars: Blue 42%, Red 40%, Undecided = 18%.",
+      "width": 700,
+      "height": 300,
+      "padding": 5,
+      "data": [
+        {
+          "name": "vals",
+          "values": [
+            {"cat": "Blue", "val": 42, "c": "#1f77b4"},
+            {"cat": "Red", "val": 40, "c": "#d62728"},
+            {"cat": "Undecided", "val": 18, "c": "#9ca3af"}
+          ]
+        }
+      ],
+      "scales": [
+        { "name": "x", "type": "band", "domain": {"data":"vals","field":"cat"}, "range":"width", "padding": 0.3 },
+        { "name": "y", "type": "linear", "domain": [0, 100], "range": "height", "nice": false, "zero": true }
+      ],
+      "axes": [
+        { "scale": "x", "orient": "bottom", "title": null },
+        {
+          "scale": "y",
+          "orient": "left",
+          "title": "Percent",
+          "grid": false,
+          "labelExpr": "datum.value + '%'"
+        }
+      ],
+      "marks": [
+        {
+          "type": "rect",
+          "from": {"data": "vals"},
+          "encode": {
+            "enter": {
+              "x": {"scale":"x","field":"cat"},
+              "width": {"scale":"x","band": 1},
+              "y": {"scale":"y","field":"val"},
+              "y2": {"scale":"y","value":0},
+              "fill": {"field":"c"}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "from": {"data":"vals"},
+          "encode": {
+            "enter": {
+              "x": {"scale":"x","field":"cat","band": 0.5},
+              "y": {"scale":"y","field":"val","offset": -6},
+              "align": {"value":"center"},
+              "baseline": {"value":"bottom"},
+              "fontSize": {"value": 12},
+              "fill": {"value":"#111"},
+              "text": {"signal": "datum.val + '%'"
+              }
+            }
+          }
+        }
+      ]
+    };
+    vegaEmbed("#view", spec, {actions:false, renderer:"canvas"});
+  </script>
+</body>
+</html>
