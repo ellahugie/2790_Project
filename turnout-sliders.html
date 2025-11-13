@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Turnout Sliders — Static + Uncertain</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    html, body { margin:0; padding:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 12px 14px 20px; }
+    #view { border:1px solid #e5e7eb; border-radius: 12px; padding: 8px; }
+    .sl { margin: 8px 0 10px; font-size: 13px; color: #374151; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="sl">Blue turnout: <span id="bval"></span>%</div>
+    <div class="sl">Red turnout: <span id="rval"></span>%</div>
+    <div id="view"></div>
+  </div>
+  <script>
+    // URL params: blue0, red0 (defaults 40/40). We cap so blue + red <= 100.
+    const p = new URLSearchParams(location.search);
+    const blue0 = Math.max(0, Math.min(100, +(p.get('blue0') || 40)));
+    const red0  = Math.max(0, Math.min(100, +(p.get('red0')  || 40)));
+
+    // Build spec
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Two sliders (Blue/Red) build their bars; Undecided = 100 - (Blue + Red)",
+      "width": 700,
+      "height": 340,
+      "padding": 5,
+      "signals": [
+        // Raw bound sliders
+        {"name":"blueRaw","value": blue0, "bind":{"input":"range","min":0,"max":100,"step":1,"name":"Blue turnout "}},
+        {"name":"redRaw","value": red0,  "bind":{"input":"range","min":0,"max":100,"step":1,"name":"Red turnout  "}},
+        // Effective values (cap so sum <= 100)
+        {"name":"blue","update":"min(blueRaw, 100 - red)"},
+        {"name":"red","update":"min(redRaw, 100 - blue)"},
+        {"name":"undec","update":"max(0, 100 - (blue + red))"}
+      ],
+      "data": [
+        {"name":"vals",
+         "transform":[
+          {"type":"sequence","start":0,"stop":1} // dummy to trigger updates
+         ]
+        }
+      ],
+      "scales": [
+        {"name": "x", "type":"band", "domain": ["Blue","Red","Undecided"], "range":"width", "padding": 0.3},
+        {"name": "y", "domain": [0, 100], "range": "height"}
+      ],
+      "axes": [
+        {"scale":"x", "orient":"bottom", "title": null},
+        {"scale":"y", "orient":"left", "title": "Percent", "format": ".0f%%"}
+      ],
+      "marks": [
+        // Bars
+        {"type":"rect","encode":{
+          "enter": {"width":{"scale":"x","band":1}},
+          "update": [
+            {"test":"true", "x":{"scale":"x","value":"Blue"}, "y":{"scale":"y","signal":"blue"}, "y2":{"scale":"y","value":0}, "fill":{"value":"#1f77b4"}},
+            {"test":"true", "x":{"scale":"x","value":"Red"},  "y":{"scale":"y","signal":"red"},  "y2":{"scale":"y","value":0}, "fill":{"value":"#d62728"}},
+            {"test":"true", "x":{"scale":"x","value":"Undecided"}, "y":{"scale":"y","signal":"undec"}, "y2":{"scale":"y","value":0}, "fill":{"value":"#9ca3af"}}
+          ]
+        }},
+        // Labels
+        {"type":"text","encode":{
+          "enter": {"align":{"value":"center"}, "baseline":{"value":"bottom"}, "fontSize":{"value":12}, "fill":{"value":"#111"}},
+          "update": [
+            {"test":"true", "x":{"scale":"x","value":"Blue","band":0.5}, "y":{"scale":"y","signal":"blue","offset":-6}, "text":{"signal":"format(blue/100, '.0%')"}},
+            {"test":"true", "x":{"scale":"x","value":"Red","band":0.5}, "y":{"scale":"y","signal":"red","offset":-6}, "text":{"signal":"format(red/100, '.0%')"}},
+            {"test":"true", "x":{"scale":"x","value":"Undecided","band":0.5}, "y":{"scale":"y","signal":"undec","offset":-6}, "text":{"signal":"format(undec/100, '.0%')"}}
+          ]
+        }}
+      ]
+    };
+
+    // Render
+    vegaEmbed("#view", spec, {actions:false, renderer:"canvas"}).then(() => {
+      // Bind readouts for accessibility/clarity
+      const onTick = () => {
+        const b = document.querySelector('input[type=range][name="Blue turnout "]');
+        const r = document.querySelector('input[type=range][name="Red turnout  "]');
+        if (b) document.getElementById('bval').textContent = b.value;
+        if (r) document.getElementById('rval').textContent = r.value;
+      };
+      onTick();
+      document.body.addEventListener('input', onTick, true);
+    });
+  </script>
+</body>
+</html>
