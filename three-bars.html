@@ -17,32 +17,26 @@
     <div id="view"></div>
   </div>
   <script>
-    // URL params: blue, red, undecided (percents, default 42/40/18), ymin/xmax fixed 0..100
-    const p = new URLSearchParams(location.search);
-    const blue = Math.max(0, Math.min(100, +(p.get('blue') || 42)));
-    const red = Math.max(0, Math.min(100, +(p.get('red') || 40)));
-    const undec = Math.max(0, Math.min(100, +(p.get('undecided') || 18)));
-    const xlabel = p.get('xlabel') || 'Percent';
     const spec = {
       "$schema": "https://vega.github.io/schema/vega/v5.json",
-      "description": "Three vertical bars: Blue, Red, Undecided.",
+      "description": "Three vertical bars: Blue, Red, Undecided (fixed values).",
       "width": 700,
       "height": 300,
       "padding": 5,
       "data": [
         {"name": "vals", "values": [
-          {"cat": "Blue", "val": blue, "c": "#1f77b4"},
-          {"cat": "Red", "val": red, "c": "#d62728"},
-          {"cat": "Undecided", "val": undec, "c": "#9ca3af"}
+          {"cat": "Blue", "val": 42, "c": "#1f77b4"},
+          {"cat": "Red", "val": 40, "c": "#d62728"},
+          {"cat": "Undecided", "val": 18, "c": "#9ca3af"}
         ]}
       ],
       "scales": [
         {"name": "x", "type": "band", "domain": {"data":"vals","field":"cat"}, "range":"width", "padding": 0.3},
-        {"name": "y", "domain": [0, 100], "range": "height", "nice": false}
+        {"name": "y", "domain": [0, 100], "range": "height"}
       ],
       "axes": [
         {"scale": "x", "orient": "bottom", "title": null},
-        {"scale": "y", "orient": "left", "title": xlabel, "format": ".0f%%", "grid": false}
+        {"scale": "y", "orient": "left", "title": "Percent", "format": ".0f%%", "grid": false}
       ],
       "marks": [
         {"type": "rect", "from": {"data": "vals"}, "encode": {
