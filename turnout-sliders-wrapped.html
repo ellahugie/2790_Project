@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Turnout Sliders — Static + Uncertain</title>
+  <!-- Vega runtime + embed helper -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    html, body { margin:0; padding:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    #view { max-width: 720px; margin: 20px auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="view"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Two turnout sliders (Blue/Red). Bars grow with sliders; Undecided fills the remainder. Sum is capped at 100 via proportional scaling.",
+      "width": 700,
+      "height": 360,
+      "padding": 5,
+      "signals": [
+        { "name":"blueRaw", "value": 42, "bind":{"input":"range","min":0,"max":100,"step":1,"name":"Blue turnout "} },
+        { "name":"redRaw",  "value": 40, "bind":{"input":"range","min":0,"max":100,"step":1,"name":"Red turnout  "} },
+        { "name":"sumRaw", "update":"blueRaw + redRaw" },
+        { "name":"scale",  "update":"sumRaw <= 100 ? 1 : 100 / sumRaw" },
+        { "name":"blue", "update":"blueRaw * scale" },
+        { "name":"red",  "update":"redRaw  * scale" },
+        { "name":"undec","update":"max(0, 100 - (blue + red))" }
+      ],
+      "scales": [
+        { "name":"x", "type":"band", "domain": ["Blue","Red","Undecided"], "range":"width", "padding": 0.3 },
+        { "name":"y", "type":"linear", "domain":[0,100], "range":"height", "zero": true }
+      ],
+      "axes": [
+        { "scale":"x", "orient":"bottom", "title": null },
+        { "scale":"y", "orient":"left", "title":"Percent", "labelExpr":"datum.value + '%'" }
+      ],
+      "marks": [
+        {
+          "type":"rect",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Blue"}, "width":{"scale":"x","band":1}, "fill":{"value":"#1f77b4"} },
+            "update": { "y":{"scale":"y","signal":"blue"}, "y2":{"scale":"y","value":0} }
+          }
+        },
+        {
+          "type":"rect",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Red"}, "width":{"scale":"x","band":1}, "fill":{"value":"#d62728"} },
+            "update": { "y":{"scale":"y","signal":"red"}, "y2":{"scale":"y","value":0} }
+          }
+        },
+        {
+          "type":"rect",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Undecided"}, "width":{"scale":"x","band":1}, "fill":{"value":"#9ca3af"} },
+            "update": { "y":{"scale":"y","signal":"undec"}, "y2":{"scale":"y","value":0} }
+          }
+        },
+        {
+          "type":"text",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Blue","band":0.5}, "align":{"value":"center"}, "baseline":{"value":"bottom"}, "fontSize":{"value":12}, "fill":{"value":"#111"} },
+            "update": { "y":{"scale":"y","signal":"blue","offset":-6}, "text":{"signal":"format(blue/100, '.0%')"} }
+          }
+        },
+        {
+          "type":"text",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Red","band":0.5}, "align":{"value":"center"}, "baseline":{"value":"bottom"}, "fontSize":{"value":12}, "fill":{"value":"#111"} },
+            "update": { "y":{"scale":"y","signal":"red","offset":-6}, "text":{"signal":"format(red/100, '.0%')"} }
+          }
+        },
+        {
+          "type":"text",
+          "encode":{
+            "enter": { "x":{"scale":"x","value":"Undecided","band":0.5}, "align":{"value":"center"}, "baseline":{"value":"bottom"}, "fontSize":{"value":12}, "fill":{"value":"#111"} },
+            "update": { "y":{"scale":"y","signal":"undec","offset":-6}, "text":{"signal":"format(undec/100, '.0%')"} }
+          }
+        }
+      ]
+    };
+    vegaEmbed("#view", spec, {actions:false, renderer:"canvas"});
+  </script>
+</body>
+</html>
