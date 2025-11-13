@@ -19,48 +19,68 @@
   <script>
     const spec = {
       "$schema": "https://vega.github.io/schema/vega/v5.json",
-      "description": "Three vertical bars: Blue, Red, Undecided (fixed values).",
+      "description": "Three vertical bars: Blue 42%, Red 40%, Undecided = 18%.",
       "width": 700,
       "height": 300,
       "padding": 5,
+
       "data": [
-        {"name": "vals", "values": [
-          {"cat": "Blue", "val": 42, "c": "#1f77b4"},
-          {"cat": "Red", "val": 40, "c": "#d62728"},
-          {"cat": "Undecided", "val": 18, "c": "#9ca3af"}
-        ]}
+        {
+          "name": "vals",
+          "values": [
+            {"cat": "Blue", "val": 42, "c": "#1f77b4"},
+            {"cat": "Red", "val": 40, "c": "#d62728"},
+            {"cat": "Undecided", "val": 18, "c": "#9ca3af"}
+          ]
+        }
       ],
+
       "scales": [
-        {"name": "x", "type": "band", "domain": {"data":"vals","field":"cat"}, "range":"width", "padding": 0.3},
-        {"name": "y", "domain": [0, 100], "range": "height"}
+        { "name": "x", "type": "band", "domain": {"data":"vals","field":"cat"}, "range":"width", "padding": 0.3 },
+        { "name": "y", "type": "linear", "domain": [0, 100], "range": "height", "nice": false, "zero": true }
       ],
+
       "axes": [
-        {"scale": "x", "orient": "bottom", "title": null},
-        {"scale": "y", "orient": "left", "title": "Percent", "format": ".0f%%", "grid": false}
+        { "scale": "x", "orient": "bottom", "title": null },
+        {
+          "scale": "y",
+          "orient": "left",
+          "title": "Percent",
+          "grid": false,
+          "labelExpr": "datum.value + '%'"
+        }
       ],
+
       "marks": [
-        {"type": "rect", "from": {"data": "vals"}, "encode": {
-          "enter": {
-            "x": {"scale":"x","field":"cat"},
-            "width": {"scale":"x","band": 1},
-            "y": {"scale":"y","field":"val"},
-            "y2": {"scale":"y","value":0},
-            "fill": {"field":"c"}
+        {
+          "type": "rect",
+          "from": {"data": "vals"},
+          "encode": {
+            "enter": {
+              "x": {"scale":"x","field":"cat"},
+              "width": {"scale":"x","band": 1},
+              "y": {"scale":"y","field":"val"},
+              "y2": {"scale":"y","value":0},
+              "fill": {"field":"c"}
+            }
           }
-        }},
-        {"type": "text", "from": {"data":"vals"}, "encode": {
-          "enter": {
-            "x": {"scale":"x","field":"cat","band": 0.5},
-            "y": {"scale":"y","field":"val","offset": -6},
-            "align": {"value":"center"},
-            "baseline": {"value":"bottom"},
-            "fontSize": {"value": 12},
-            "fill": {"value":"#111"}
-          },
-          "update": {
-            "text": {"signal": "format(datum.val/100, '.0%')"}
+        },
+        {
+          "type": "text",
+          "from": {"data":"vals"},
+          "encode": {
+            "enter": {
+              "x": {"scale":"x","field":"cat","band": 0.5},
+              "y": {"scale":"y","field":"val","offset": -6},
+              "align": {"value":"center"},
+              "baseline": {"value":"bottom"},
+              "fontSize": {"value": 12},
+              "fill": {"value":"#111"},
+              "text": {"signal": "datum.val + '%'"
+              }
+            }
           }
-        }}
+        }
       ]
     };
     vegaEmbed("#view", spec, {actions:false, renderer:"canvas"});
