@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Uncertainty — Margin Quantile Dotplot (Interactive)</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    html,body{margin:0;padding:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    #view{max-width:760px;margin:20px auto;border:1px solid #e5e7eb;border-radius:12px;padding:10px}
+  </style>
+</head>
+<body>
+  <div id="view"></div>
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Interactive quantile dotplot of the Blue − Red margin (percentage points).",
+      "width": 760,
+      "height": 260,
+      "padding": 5,
+      "signals": [
+        { "name": "xMin", "value": -20 },
+        { "name": "xMax", "value": 20 },
+        { "name": "marginMean", "value": 2, "bind": {"input": "range", "min": -10, "max": 10, "step": 0.5, "name": "Mean (Blue − Red) pts " } },
+        { "name": "marginSd", "value": 4.5, "bind": {"input": "range", "min": 1, "max": 8, "step": 0.1, "name": "Uncertainty (SD) " } },
+        { "name": "nDots", "value": 100, "bind": {"input": "range", "min": 40, "max": 200, "step": 10, "name": "Dots " } },
+        { "name": "step", "update": "1.25 * sqrt(20 / nDots)" },
+        { "name": "size", "update": "scale('x', step) - scale('x', 0)" },
+        { "name": "area", "update": "max(25, size * size)" },
+        { "name": "pBlueWin", "update": "1 - cumulativeNormal(0, marginMean, marginSd)" },
+        { "name": "pRedWin",  "update": "cumulativeNormal(0, marginMean, marginSd)" }
+      ],
+      "data": [
+        {
+          "name": "q",
+          "transform": [
+            { "type": "sequence", "as": "p", "start": {"signal": "0.5 / nDots"}, "step": {"signal": "1/nDots"}, "stop": 1 },
+            { "type": "formula", "as": "value", "expr": "clamp(quantileNormal(datum.p, marginMean, marginSd), xMin, xMax)" },
+            { "type": "dotbin", "field": "value", "step": {"signal": "step"} },
+            { "type": "stack", "groupby": ["bin"] }
+          ]
+        }
+      ],
+      "scales": [
+        { "name": "x", "domain": {"signal": "[xMin, xMax]"}, "range": "width" },
+        { "name": "y", "domain": {"signal": "[0, height / size]"}, "range": "height" }
+      ],
+      "axes": [
+        { "scale": "x", "orient": "bottom", "title": "Blue − Red margin (percentage points)" }
+      ],
+      "marks": [
+        {
+          "type": "rule",
+          "encode": { "update": {
+            "x": {"scale":"x","value":0},
+            "y": {"value":0},
+            "y2":{"signal":"height"},
+            "stroke":{"value":"#111"},
+            "strokeOpacity":{"value":0.35}
+          } }
+        },
+        {
+          "type": "symbol",
+          "from": { "data": "q" },
+          "encode": {
+            "enter": {
+              "x": {"scale":"x","field":"bin"},
+              "y": {"scale":"y","signal":"datum.y0 + 0.5"},
+              "size": {"signal":"area"}
+            },
+            "update": {
+              "fill": {"signal":"datum.bin >= 0 ? '#1f77b4' : '#d62728'"}
+            }
+          }
+        },
+        {
+          "type":"text",
+          "encode": { "update": {
+            "x":{"scale":"x","value":-0.1},
+            "y":{"value":20},
+            "align":{"value":"right"},
+            "fill":{"value":"#d62728"},
+            "fontSize":{"value":12},
+            "text":{"signal":"'Red wins in ' + format(pRedWin, '.0%')"}
+          } }
+        },
+        {
+          "type":"text",
+          "encode": { "update": {
+            "x":{"scale":"x","value":0.1},
+            "y":{"value":20},
+            "align":{"value":"left"},
+            "fill":{"value":"#1f77b4"},
+            "fontSize":{"value":12},
+            "text":{"signal":"'Blue wins in ' + format(pBlueWin, '.0%')"}
+          } }
+        }
+      ]
+    };
+    vegaEmbed("#view", spec, {actions:false, renderer:"canvas"});
+  </script>
+</body>
+</html>
