@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive + Uncertain — Turnout, DNV, ±1 SD (No Actions)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    #vis { max-width: 900px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Interactive popular vote with turnout sliders, Did Not Vote bar, and ±1 SD uncertainty bands on candidate bars.",
+      "width": 500,
+      "height": 280,
+      "padding": 10,
+      "autosize": "pad",
+
+      "signals": [
+        {
+          "name": "blueTurnout",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Blue turnout: "}
+        },
+        {
+          "name": "redTurnout",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Red turnout:  "}
+        }
+      ],
+
+      "data": [
+        {
+          "name": "forecast",
+          "values": [
+            {"candidate": "Blue Candidate", "vote_share": 0.52, "sd": 0.13},
+            {"candidate": "Red Candidate",  "vote_share": 0.48, "sd": 0.05}
+          ]
+        },
+
+        {
+          "name": "display",
+          "values": [
+            {"category": "Blue Candidate"},
+            {"category": "Red Candidate"},
+            {"category": "Did Not Vote"}
+          ],
+          "transform": [
+            {
+              "type": "lookup",
+              "from": "forecast",
+              "key": "candidate",
+              "fields": ["category"],
+              "values": ["vote_share", "sd"],
+              "as": ["vote_share", "sd"]
+            },
+            {
+              "type": "formula",
+              "as": "turnout",
+              "expr": "datum.category === 'Blue Candidate' ? blueTurnout : (datum.category === 'Red Candidate' ? redTurnout : 0)"
+            },
+            {
+              "type": "formula",
+              "as": "scaled",
+              "expr": "datum.category === 'Did Not Vote' ? 0 : datum.vote_share * datum.turnout"
+            },
+            {
+              "type": "formula",
+              "as": "scaled_sd",
+              "expr": "datum.category === 'Did Not Vote' || datum.sd == null ? null : datum.sd * datum.turnout"
+            },
+            {
+              "type": "formula",
+              "as": "sd_low",
+              "expr": "datum.scaled_sd == null ? null : clamp(datum.scaled - datum.scaled_sd, 0, 1)"
+            },
+            {
+              "type": "formula",
+              "as": "sd_high",
+              "expr": "datum.scaled_sd == null ? null : clamp(datum.scaled + datum.scaled_sd, 0, 1)"
+            },
+            {
+              "type": "joinaggregate",
+              "as": ["totalScaled"],
+              "ops": ["sum"],
+              "fields": ["scaled"]
+            },
+            {
+              "type": "formula",
+              "as": "value",
+              "expr": "datum.category === 'Did Not Vote' ? max(0, 1 - datum.totalScaled) : datum.scaled"
+            }
+          ]
+        }
+      ],
+
+      "scales": [
+        {"name": "x", "type": "band", "domain": {"data": "display", "field": "category"}, "range": "width", "padding": 0.25},
+        {"name": "y", "type": "linear", "domain": [0, 1], "nice": true, "range": "height"},
+        {"name": "color", "type": "ordinal", "domain": ["Blue Candidate","Red Candidate","Did Not Vote"], "range": ["#3454D1", "#d8031c", "#9e9e9e"]}
+      ],
+
+      "axes": [
+        {"orient": "bottom", "scale": "x", "title": null, "labelFontSize": 12},
+        {"orient": "left", "scale": "y", "title": "Share of population", "format": ".0%", "labelFontSize": 12, "titleFontSize": 12}
+      ],
+
+      "marks": [
+        /* Title (centered) */
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": -5},
+              "align": {"value": "center"},
+              "text": {"value": "Popular Vote with Turnout, Did Not Vote, and ±1 SD"},
+              "fontSize": {"value": 14},
+              "fontWeight": {"value": "bold"},
+              "fill": {"value": "#111"}
+            }
+          }
+        },
+
+        /* Subtitle / slider readout (centered) */
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": 12},
+              "align": {"value": "center"},
+              "fontSize": {"value": 11},
+              "fill": {"value": "#555"}
+            },
+            "update": {
+              "text": {"signal": "'Blue turnout: ' + format(blueTurnout, '.0%') + ' • Red turnout: ' + format(redTurnout, '.0%')"}
+            }
+          }
+        },
+
+        /* Bars */
+        {
+          "type": "rect",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category"},
+              "width": {"scale": "x", "band": 1},
+              "fill": {"scale": "color", "field": "category"}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "value"},
+              "y2": {"scale": "y", "value": 0}
+            }
+          }
+        },
+
+        /* Transparent SD band (only for candidates) */
+        {
+          "type": "rect",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "band": 0},
+              "x2": {"scale": "x", "field": "category", "band": 1},
+              "fill": {"value": "#000"},
+              "fillOpacity": {"value": 0.15},
+              "stroke": {"value": "#000"},
+              "strokeOpacity": {"value": 0.25}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "sd_high"},
+              "y2": {"scale": "y", "field": "sd_low"},
+              "opacity": {"signal": "datum.sd_low == null ? 0 : 1"}
+            }
+          }
+        },
+
+        /* SD cap ticks (only for candidates) */
+        {
+          "type": "rule",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "band": 0},
+              "x2": {"scale": "x", "field": "category", "band": 1},
+              "stroke": {"value": "#000"},
+              "strokeWidth": {"value": 2},
+              "strokeOpacity": {"value": 0.5}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "sd_high"},
+              "opacity": {"signal": "datum.sd_high == null ? 0 : 1"}
+            }
+          }
+        },
+        {
+          "type": "rule",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "band": 0},
+              "x2": {"scale": "x", "field": "category", "band": 1},
+              "stroke": {"value": "#000"},
+              "strokeWidth": {"value": 2},
+              "strokeOpacity": {"value": 0.5}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "sd_low"},
+              "opacity": {"signal": "datum.sd_low == null ? 0 : 1"}
+            }
+          }
+        },
+
+        /* Value labels: reacts to sliders; above top error bar for candidates, above bar for DNV */
+        {
+          "type": "text",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "offset": 0.5, "band": 0.5},
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fontSize": {"value": 12},
+              "fill": {"value": "#111"},
+              "zindex": {"value": 10}
+            },
+            "update": {
+              "y": {"signal": "datum.sd_high == null ? (scale('y', datum.value) - 6) : max(0, scale('y', datum.sd_high) - 8)"},
+              "text": {"signal": "format(datum.value, '.0%')"}
+            }
+          }
+        }
+      ]
+    };
+
+    // Disable all Vega action buttons for a clean embed
+    vegaEmbed('#vis', spec, {actions: false});
+  </script>
+</body>
+</html>

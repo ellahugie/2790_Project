@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Static + Certain — Popular Vote Forecast (No Actions)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    #vis { max-width: 820px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Static + Certain: point-estimate popular vote forecast",
+      "width": 440,
+      "height": 240,
+      "padding": 10,
+      "autosize": "pad",
+
+      "data": [
+        {
+          "name": "forecast",
+          "values": [
+            {"candidate": "Blue Candidate", "vote_share": 0.52},
+            {"candidate": "Red Candidate", "vote_share": 0.48}
+          ]
+        }
+      ],
+
+      "scales": [
+        {
+          "name": "x",
+          "type": "band",
+          "domain": {"data": "forecast", "field": "candidate"},
+          "range": "width",
+          "padding": 0.25
+        },
+        {
+          "name": "y",
+          "type": "linear",
+          "domain": [0, 1],
+          "nice": true,
+          "range": "height"
+        },
+        {
+          "name": "color",
+          "type": "ordinal",
+          "domain": ["Blue Candidate", "Red Candidate"],
+          "range": ["#3454D1", "#d8031c"]
+        }
+      ],
+
+      "axes": [
+        {"orient": "bottom", "scale": "x", "title": null, "labelFontSize": 12},
+        {
+          "orient": "left",
+          "scale": "y",
+          "title": "Predicted vote share",
+          "format": ".0%",
+          "labelFontSize": 12,
+          "titleFontSize": 12
+        }
+      ],
+
+      "marks": [
+        {
+          "type": "rect",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate"},
+              "width": {"scale": "x", "band": 1},
+              "y": {"scale": "y", "field": "vote_share"},
+              "y2": {"scale": "y", "value": 0},
+              "fill": {"scale": "color", "field": "candidate"}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate", "band": 0.5},
+              "y": {"scale": "y", "field": "vote_share", "offset": -6},
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fontSize": {"value": 12},
+              "text": {"signal": "format(datum.vote_share, '.0%')"},
+              "fill": {"value": "#111"}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": -5},
+              "align": {"value": "center"},
+              "text": {"value": "Popular Vote Forecast"},
+              "fontSize": {"value": 14},
+              "fontWeight": {"value": "bold"},
+              "fill": {"value": "#111"}
+            }
+          }
+        }
+      ]
+    };
+
+    // Disable all Vega action buttons
+    vegaEmbed('#vis', spec, {actions: false});
+  </script>
+</body>
+</html>

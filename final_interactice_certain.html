@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive + Certain — Turnout & Did Not Vote (No Actions)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    #vis { max-width: 820px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Interactive popular vote with turnout sliders and a Did Not Vote bar.",
+      "width": 460,
+      "height": 260,
+      "padding": 10,
+      "autosize": "pad",
+
+      "signals": [
+        {
+          "name": "blueTurnout",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Blue turnout: "}
+        },
+        {
+          "name": "redTurnout",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Red turnout:  "}
+        }
+      ],
+
+      "data": [
+        {
+          "name": "forecast",
+          "values": [
+            {"candidate": "Blue Candidate", "vote_share": 0.52},
+            {"candidate": "Red Candidate",  "vote_share": 0.48}
+          ]
+        },
+        {
+          "name": "display",
+          "values": [
+            {"category": "Blue Candidate"},
+            {"category": "Red Candidate"},
+            {"category": "Did Not Vote"}
+          ],
+          "transform": [
+            {
+              "type": "lookup",
+              "from": "forecast",
+              "key": "candidate",
+              "fields": ["category"],
+              "values": ["vote_share"],
+              "as": ["vote_share"]
+            },
+            {
+              "type": "formula",
+              "as": "scaled",
+              "expr": "datum.category === 'Blue Candidate' ? (datum.vote_share * blueTurnout) : (datum.category === 'Red Candidate' ? (datum.vote_share * redTurnout) : 0)"
+            },
+            {
+              "type": "joinaggregate",
+              "as": ["totalScaled"],
+              "ops": ["sum"],
+              "fields": ["scaled"]
+            },
+            {
+              "type": "formula",
+              "as": "value",
+              "expr": "datum.category === 'Did Not Vote' ? max(0, 1 - datum.totalScaled) : datum.scaled"
+            }
+          ]
+        }
+      ],
+
+      "scales": [
+        {
+          "name": "x",
+          "type": "band",
+          "domain": {"data": "display", "field": "category"},
+          "range": "width",
+          "padding": 0.25
+        },
+        {
+          "name": "y",
+          "type": "linear",
+          "domain": [0, 1],
+          "nice": true,
+          "range": "height"
+        },
+        {
+          "name": "color",
+          "type": "ordinal",
+          "domain": ["Blue Candidate","Red Candidate","Did Not Vote"],
+          "range": ["#3454D1", "#d8031c", "#9e9e9e"]
+        }
+      ],
+
+      "axes": [
+        {"orient": "bottom", "scale": "x", "title": null, "labelFontSize": 12},
+        {"orient": "left", "scale": "y", "title": "Share of population", "format": ".0%", "labelFontSize": 12, "titleFontSize": 12}
+      ],
+
+      "marks": [
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": -5},
+              "align": {"value": "center"},
+              "text": {"value": "Popular Vote with Turnout & Did Not Vote"},
+              "fontSize": {"value": 14},
+              "fontWeight": {"value": "bold"},
+              "fill": {"value": "#111"}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": 12},
+              "align": {"value": "center"},
+              "fontSize": {"value": 11},
+              "fill": {"value": "#555"}
+            },
+            "update": {
+              "text": {"signal": "'Blue turnout: ' + format(blueTurnout, '.0%') + ' • Red turnout: ' + format(redTurnout, '.0%')"}
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category"},
+              "width": {"scale": "x", "band": 1},
+              "fill": {"scale": "color", "field": "category"}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "value"},
+              "y2": {"scale": "y", "value": 0},
+              "opacity": {"value": 1}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "offset": 0.5, "band": 0.5},
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fontSize": {"value": 12},
+              "fill": {"value": "#111"}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "value", "offset": -6},
+              "text": {"signal": "format(datum.value, '.0%')"}
+            }
+          }
+        }
+      ]
+    };
+
+    // Disable all Vega action buttons for a clean embed
+    vegaEmbed('#vis', spec, {actions: false});
+  </script>
+</body>
+</html>
