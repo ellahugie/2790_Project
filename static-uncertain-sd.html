@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Static + Uncertain — Bars with ±1 SD</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    #vis { max-width: 820px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Bars with transparent standard-deviation band around the top (±1 SD).",
+      "width": 500,
+      "height": 280,
+      "padding": 10,
+      "autosize": "pad",
+
+      "data": [
+        {
+          "name": "forecast",
+          "values": [
+            {"candidate": "Blue Candidate", "mean": 0.52, "sd": 0.13},
+            {"candidate": "Red Candidate",  "mean": 0.48, "sd": 0.05}
+          ],
+          "transform": [
+            {"type": "formula", "as": "sd_low",  "expr": "clamp(datum.mean - datum.sd, 0, 1)"},
+            {"type": "formula", "as": "sd_high", "expr": "clamp(datum.mean + datum.sd, 0, 1)"}
+          ]
+        }
+      ],
+
+      "scales": [
+        {"name": "x", "type": "band", "domain": {"data": "forecast", "field": "candidate"}, "range": "width", "padding": 0.35},
+        {"name": "y", "type": "linear", "domain": [0, 1], "nice": true, "range": "height"},
+        {"name": "color", "type": "ordinal", "domain": ["Blue Candidate", "Red Candidate"], "range": ["#3454D1", "#d8031c"]}
+      ],
+
+      "axes": [
+        {"orient": "bottom", "scale": "x", "title": null, "labelFontSize": 12},
+        {"orient": "left", "scale": "y", "title": "Predicted vote share", "format": ".0%", "labelFontSize": 12, "titleFontSize": 12}
+      ],
+
+      "marks": [
+        /* Title (centered) */
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": -5},
+              "align": {"value": "center"},
+              "text": {"value": "Popular Vote Forecast — Bars with ±1 SD"},
+              "fontSize": {"value": 14},
+              "fontWeight": {"value": "bold"},
+              "fill": {"value": "#111"}
+            }
+          }
+        },
+        /* Subtitle (centered) */
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": 12},
+              "align": {"value": "center"},
+              "text": {"value": "Bar = mean • Shaded band = ±1 SD around top • Ticks = SD bounds"},
+              "fontSize": {"value": 11},
+              "fill": {"value": "#555"}
+            }
+          }
+        },
+
+        /* Bars (mean) */
+        {
+          "type": "rect",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate"},
+              "width": {"scale": "x", "band": 1},
+              "y": {"scale": "y", "field": "mean"},
+              "y2": {"scale": "y", "value": 0},
+              "fill": {"scale": "color", "field": "candidate"}
+            }
+          }
+        },
+
+        /* Transparent SD band (±1 SD) */
+        {
+          "type": "rect",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate", "band": 0},
+              "x2": {"scale": "x", "field": "candidate", "band": 1},
+              "y": {"scale": "y", "field": "sd_high"},
+              "y2": {"scale": "y", "field": "sd_low"},
+              "fill": {"value": "#000"},
+              "fillOpacity": {"value": 0.15},
+              "stroke": {"value": "#000"},
+              "strokeOpacity": {"value": 0.25}
+            }
+          }
+        },
+
+        /* SD cap ticks */
+        {
+          "type": "rule",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate", "band": 0},
+              "x2": {"scale": "x", "field": "candidate", "band": 1},
+              "y": {"scale": "y", "field": "sd_high"},
+              "stroke": {"value": "#000"},
+              "strokeWidth": {"value": 2},
+              "strokeOpacity": {"value": 0.5}
+            }
+          }
+        },
+        {
+          "type": "rule",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate", "band": 0},
+              "x2": {"scale": "x", "field": "candidate", "band": 1},
+              "y": {"scale": "y", "field": "sd_low"},
+              "stroke": {"value": "#000"},
+              "strokeWidth": {"value": 2},
+              "strokeOpacity": {"value": 0.5}
+            }
+          }
+        },
+
+        /* Mean label positioned ABOVE the top error bar (with clamp) */
+        {
+          "type": "text",
+          "from": {"data": "forecast"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "candidate", "band": 0.5},
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fontSize": {"value": 12},
+              "text": {"signal": "format(datum.mean, '.0%')"},
+              "fill": {"value": "#111"},
+              "zindex": {"value": 10}
+            },
+            "update": {
+              "y": {"signal": "Math.max(0, scale('y', datum.sd_high) - 8)"}
+            }
+          }
+        }
+      ]
+    };
+
+    vegaEmbed('#vis', spec, {actions: {export: true, source: true, editor: true}});
+  </script>
+</body>
+</html>
