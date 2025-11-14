@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive + Certain — Crop Harvest (No Actions)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    #vis { max-width: 960px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+
+  <script>
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "description": "Interactive crop harvest with harvest-factor sliders and an Unharvested bar (sliders labeled and in one row).",
+      "width": 460,
+      "height": 260,
+      "padding": 10,
+      "autosize": "pad",
+
+      "signals": [
+        {
+          "name": "cornFactor",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Corn Harvest Factor: "}
+        },
+        {
+          "name": "soyFactor",
+          "value": 1,
+          "bind": {"input": "range", "min": 0, "max": 1, "step": 0.01, "name": "Soy Harvest Factor:  "}
+        }
+      ],
+
+      "data": [
+        {
+          "name": "forecast",
+          "values": [
+            {"candidate": "Corn", "vote_share": 0.52},
+            {"candidate": "Soy",  "vote_share": 0.48}
+          ]
+        },
+        {
+          "name": "display",
+          "values": [
+            {"category": "Corn"},
+            {"category": "Soy"},
+            {"category": "Unharvested"}
+          ],
+          "transform": [
+            {
+              "type": "lookup",
+              "from": "forecast",
+              "key": "candidate",
+              "fields": ["category"],
+              "values": ["vote_share"],
+              "as": ["vote_share"]
+            },
+            {
+              "type": "formula",
+              "as": "scaled",
+              "expr": "datum.category === 'Corn' ? (datum.vote_share * cornFactor) : (datum.category === 'Soy' ? (datum.vote_share * soyFactor) : 0)"
+            },
+            {
+              "type": "joinaggregate",
+              "as": ["totalScaled"],
+              "ops": ["sum"],
+              "fields": ["scaled"]
+            },
+            {
+              "type": "formula",
+              "as": "value",
+              "expr": "datum.category === 'Unharvested' ? max(0, 1 - datum.totalScaled) : datum.scaled"
+            }
+          ]
+        }
+      ],
+
+      "scales": [
+        {"name": "x", "type": "band", "domain": {"data": "display", "field": "category"}, "range": "width", "padding": 0.25},
+        {"name": "y", "type": "linear", "domain": [0, 1], "nice": true, "range": "height"},
+        {"name": "color", "type": "ordinal", "domain": ["Corn","Soy","Unharvested"], "range": ["#2b7a0b", "#8c4a00", "#9e9e9e"]}
+      ],
+
+      "axes": [
+        {"orient": "bottom", "scale": "x", "title": null, "labelFontSize": 12},
+        {"orient": "left", "scale": "y", "title": "Share of total harvest", "format": ".0%", "labelFontSize": 12, "titleFontSize": 12}
+      ],
+
+      "marks": [
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": -5},
+              "align": {"value": "center"},
+              "text": {"value": "Projected Harvest with Harvest Factors & Unharvested"},
+              "fontSize": {"value": 14},
+              "fontWeight": {"value": "bold"},
+              "fill": {"value": "#111"}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "x": {"signal": "width/2"},
+              "y": {"value": 12},
+              "align": {"value": "center"},
+              "fontSize": {"value": 11},
+              "fill": {"value": "#555"}
+            },
+            "update": {
+              "text": {"signal": "'Corn: ' + format(cornFactor, '.0%') + '  •  Soy: ' + format(soyFactor, '.0%')"}
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category"},
+              "width": {"scale": "x", "band": 1},
+              "fill": {"scale": "color", "field": "category"}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "value"},
+              "y2": {"scale": "y", "value": 0}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "from": {"data": "display"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "category", "offset": 0.5, "band": 0.5},
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fontSize": {"value": 12},
+              "fill": {"value": "#111"}
+            },
+            "update": {
+              "y": {"scale": "y", "field": "value", "offset": -6},
+              "text": {"signal": "format(datum.value, '.0%')"}
+            }
+          }
+        }
+      ]
+    };
+
+    // Embed with actions disabled
+    vegaEmbed('#vis', spec, {actions: false});
+  </script>
+</body>
+</html>
